@@ -1,1123 +1,747 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { generateResponse } from "./api";
 import ReactMarkdown from "react-markdown";
 
-/* ─── Google Fonts ─────────────────────────────────────────────────────────── */
-const FontLink = () => (
-  <link
-    href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400&family=Rajdhani:wght@300;400;500;600;700&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap"
-    rel="stylesheet"
-  />
-);
+/* ─── GLOBAL STYLES injected once ─────────────────────────────────────── */
+const GLOBAL_CSS = `
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Space+Mono:wght@400;700&family=Cormorant+Garamond:ital,wght@0,300;0,600;1,300&display=swap');
 
-/* ─── Global CSS injected once ─────────────────────────────────────────────── */
-const GlobalCSS = () => {
-  useEffect(() => {
-    const style = document.createElement("style");
-    style.textContent = `
-      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-      html { scroll-behavior: smooth; }
-      body { background: #03030a; overflow-x: hidden; }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-      ::-webkit-scrollbar { width: 4px; }
-      ::-webkit-scrollbar-track { background: #03030a; }
-      ::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #c9a84c, #7b4f12); border-radius: 2px; }
+  :root {
+    --gold: #c9a84c;
+    --gold-light: #f0d080;
+    --gold-dim: rgba(201,168,76,0.18);
+    --cream: #f5f0e8;
+    --dark: #0c0a06;
+    --dark2: #141209;
+    --dark3: #1c1910;
+    --ink: #2a2618;
+    --mist: rgba(245,240,232,0.06);
+    --mist2: rgba(245,240,232,0.12);
+    --font-display: 'Playfair Display', serif;
+    --font-mono: 'Space Mono', monospace;
+    --font-body: 'Cormorant Garamond', serif;
+  }
 
-      @keyframes rotateSlow { from { transform: rotateY(0deg) rotateX(10deg); } to { transform: rotateY(360deg) rotateX(10deg); } }
-      @keyframes floatY { 0%,100% { transform: translateY(0px); } 50% { transform: translateY(-18px); } }
-      @keyframes pulseGlow { 0%,100% { opacity: 0.5; } 50% { opacity: 1; } }
-      @keyframes shimmer { 0% { background-position: -400% 0; } 100% { background-position: 400% 0; } }
-      @keyframes scanLine { 0% { transform: translateY(-100%); } 100% { transform: translateY(100vh); } }
-      @keyframes fadeUp { from { opacity:0; transform:translateY(40px); } to { opacity:1; transform:translateY(0); } }
-      @keyframes borderFlow {
-        0% { background-position: 0% 50%; }
-        50% { background-position: 100% 50%; }
-        100% { background-position: 0% 50%; }
-      }
-      @keyframes crystalSpin {
-        0% { transform: perspective(600px) rotateY(0deg) rotateX(15deg) rotateZ(5deg); }
-        100% { transform: perspective(600px) rotateY(360deg) rotateX(15deg) rotateZ(5deg); }
-      }
-      @keyframes particleDrift {
-        0% { transform: translateY(100vh) translateX(0px); opacity: 0; }
-        10% { opacity: 1; }
-        90% { opacity: 0.6; }
-        100% { transform: translateY(-100px) translateX(60px); opacity: 0; }
-      }
-      @keyframes holo {
-        0% { background-position: 0% 50%; filter: hue-rotate(0deg); }
-        50% { background-position: 100% 50%; filter: hue-rotate(30deg); }
-        100% { background-position: 0% 50%; filter: hue-rotate(0deg); }
-      }
-      @keyframes ringPulse {
-        0%,100% { transform: scale(1); opacity:0.6; }
-        50% { transform: scale(1.15); opacity:0.2; }
-      }
-      @keyframes dotBlink { 0%,80%,100% { opacity:0; } 40% { opacity:1; } }
+  html { scroll-behavior: smooth; }
 
-      .nav-link {
-        color: rgba(201,168,76,0.5);
-        text-decoration: none;
-        font-family: 'Rajdhani', sans-serif;
-        font-size: 11px;
-        letter-spacing: 3px;
-        text-transform: uppercase;
-        cursor: pointer;
-        transition: color 0.3s, text-shadow 0.3s;
-        position: relative;
-      }
-      .nav-link::after {
-        content: '';
-        position: absolute;
-        bottom: -4px; left: 0;
-        width: 0; height: 1px;
-        background: linear-gradient(90deg, #c9a84c, #f0d080);
-        transition: width 0.3s ease;
-      }
-      .nav-link:hover { color: #c9a84c; text-shadow: 0 0 20px rgba(201,168,76,0.6); }
-      .nav-link:hover::after { width: 100%; }
+  body {
+    background: var(--dark);
+    color: var(--cream);
+    font-family: var(--font-body);
+    overflow-x: hidden;
+    cursor: none;
+  }
 
-      .feature-card-3d {
-        background: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%);
-        border: 1px solid rgba(201,168,76,0.12);
-        backdrop-filter: blur(20px);
-        transition: transform 0.4s cubic-bezier(0.23,1,0.32,1), box-shadow 0.4s, border-color 0.3s;
-        transform-style: preserve-3d;
-        cursor: default;
-      }
-      .feature-card-3d:hover {
-        transform: perspective(800px) rotateX(-5deg) rotateY(5deg) translateZ(20px);
-        box-shadow: 20px 20px 60px rgba(0,0,0,0.7), -4px -4px 20px rgba(201,168,76,0.08), 0 0 40px rgba(201,168,76,0.05);
-        border-color: rgba(201,168,76,0.3);
-      }
+  .cursor-dot {
+    position: fixed; top: 0; left: 0;
+    width: 8px; height: 8px;
+    background: var(--gold); border-radius: 50%;
+    pointer-events: none; z-index: 9999;
+    transform: translate(-50%, -50%);
+    mix-blend-mode: difference;
+  }
+  .cursor-ring {
+    position: fixed; top: 0; left: 0;
+    width: 36px; height: 36px;
+    border: 1px solid rgba(201,168,76,0.5); border-radius: 50%;
+    pointer-events: none; z-index: 9998;
+    transform: translate(-50%, -50%);
+    transition: transform 0.18s ease, width 0.2s, height 0.2s, border-color 0.2s;
+  }
+  .cursor-ring.hovered { width: 56px; height: 56px; border-color: var(--gold); }
 
-      .stat-card {
-        transition: transform 0.3s ease, box-shadow 0.3s;
-      }
-      .stat-card:hover {
-        transform: translateY(-8px) scale(1.03);
-        box-shadow: 0 30px 60px rgba(201,168,76,0.12);
-      }
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: var(--dark); }
+  ::-webkit-scrollbar-thumb { background: var(--gold-dim); border-radius: 2px; }
 
-      .step-card {
-        transition: transform 0.4s cubic-bezier(0.23,1,0.32,1), box-shadow 0.4s, border-color 0.3s;
-        position: relative;
-        overflow: hidden;
-      }
-      .step-card::before {
-        content: '';
-        position: absolute;
-        inset: 0;
-        background: linear-gradient(135deg, rgba(201,168,76,0.06) 0%, transparent 60%);
-        opacity: 0;
-        transition: opacity 0.4s;
-      }
-      .step-card:hover { transform: translateY(-12px); border-color: rgba(201,168,76,0.25); box-shadow: 0 40px 80px rgba(0,0,0,0.6), 0 0 60px rgba(201,168,76,0.06); }
-      .step-card:hover::before { opacity: 1; }
+  #bg-canvas {
+    position: fixed; top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 0; pointer-events: none; opacity: 0.55;
+  }
 
-      .testi-card {
-        transition: transform 0.4s ease, border-color 0.3s, box-shadow 0.4s;
-        position: relative; overflow: hidden;
-      }
-      .testi-card::after {
-        content: '';
-        position: absolute; top:0; left:-100%;
-        width: 100%; height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(201,168,76,0.04), transparent);
-        transition: left 0.6s ease;
-      }
-      .testi-card:hover { transform: translateY(-6px); border-color: rgba(201,168,76,0.2); box-shadow: 0 30px 60px rgba(0,0,0,0.5); }
-      .testi-card:hover::after { left: 100%; }
+  .noise {
+    position: fixed; inset: 0; z-index: 1; pointer-events: none; opacity: 0.035;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 200px 200px;
+  }
 
-      .generate-btn {
-        position: relative; overflow: hidden;
-        transition: transform 0.2s, box-shadow 0.3s;
-      }
-      .generate-btn::before {
-        content: '';
-        position: absolute; inset: 0;
-        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
-        transform: translateX(-100%);
-        transition: transform 0.5s ease;
-      }
-      .generate-btn:hover:not(:disabled)::before { transform: translateX(100%); }
-      .generate-btn:hover:not(:disabled) {
-        transform: translateY(-2px);
-        box-shadow: 0 16px 48px rgba(201,168,76,0.5), 0 0 80px rgba(201,168,76,0.15), inset 0 1px 0 rgba(255,255,255,0.2);
-      }
-      .generate-btn:active:not(:disabled) { transform: translateY(0); }
+  .app-root { position: relative; z-index: 2; min-height: 100vh; }
 
-      .prompt-textarea {
-        transition: border-color 0.3s, box-shadow 0.3s, background 0.3s;
-      }
-      .prompt-textarea:focus {
-        outline: none;
-        border-color: rgba(201,168,76,0.4);
-        box-shadow: 0 0 0 3px rgba(201,168,76,0.07), inset 0 2px 8px rgba(0,0,0,0.3);
-        background: rgba(201,168,76,0.025);
-      }
+  /* HEADER */
+  .site-header {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+    height: 72px; display: flex; align-items: center; justify-content: space-between;
+    padding: 0 48px; border-bottom: 1px solid rgba(201,168,76,0.1);
+    background: rgba(12,10,6,0.8); backdrop-filter: blur(24px);
+  }
+  .header-logo {
+    font-family: var(--font-display); font-size: 22px; font-weight: 900;
+    letter-spacing: 0.15em; color: var(--cream); text-transform: uppercase; position: relative;
+  }
+  .header-logo span { color: var(--gold); }
+  .header-logo::after {
+    content: ''; position: absolute; bottom: -2px; left: 0; right: 0;
+    height: 1px; background: linear-gradient(90deg, var(--gold), transparent);
+  }
+  .header-nav { display: flex; gap: 36px; list-style: none; align-items: center; }
+  .header-nav a {
+    font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.2em;
+    text-transform: uppercase; color: rgba(245,240,232,0.4);
+    text-decoration: none; cursor: none; transition: color 0.3s;
+  }
+  .header-nav a:hover { color: var(--gold); }
+  .header-cta {
+    font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.2em;
+    text-transform: uppercase; color: var(--dark); background: var(--gold);
+    border: none; padding: 10px 24px; cursor: none;
+    clip-path: polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%);
+    font-weight: 700; transition: background 0.3s;
+  }
+  .header-cta:hover { background: var(--gold-light); }
 
-      .particle {
-        position: fixed;
-        width: 2px; height: 2px;
-        border-radius: 50%;
-        pointer-events: none;
-        z-index: 0;
-      }
+  /* HERO */
+  .hero {
+    min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    text-align: center; padding: 120px 24px 80px;
+    position: relative; overflow: hidden;
+  }
+  .hero-eyebrow {
+    font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.5em;
+    text-transform: uppercase; color: var(--gold); margin-bottom: 32px;
+    opacity: 0; animation: fadeUp 0.8s 0.2s forwards;
+  }
+  .hero-title {
+    font-family: var(--font-display); font-size: clamp(56px, 10vw, 130px);
+    font-weight: 900; line-height: 0.9; text-transform: uppercase; letter-spacing: -0.02em;
+    color: var(--cream); margin-bottom: 12px; opacity: 0; animation: fadeUp 0.9s 0.35s forwards;
+  }
+  .hero-title em {
+    font-style: italic; color: transparent; -webkit-text-stroke: 1px var(--gold);
+    display: block;
+  }
+  .hero-sub {
+    font-family: var(--font-body); font-size: clamp(16px, 2vw, 20px);
+    font-weight: 300; font-style: italic; color: rgba(245,240,232,0.45);
+    letter-spacing: 0.05em; margin-bottom: 56px; max-width: 500px;
+    opacity: 0; animation: fadeUp 0.9s 0.5s forwards;
+  }
+  .hero-badges {
+    display: flex; gap: 20px; flex-wrap: wrap; justify-content: center;
+    margin-bottom: 64px; opacity: 0; animation: fadeUp 0.9s 0.65s forwards;
+  }
+  .hero-badge {
+    font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.3em;
+    text-transform: uppercase; color: rgba(245,240,232,0.5);
+    border: 1px solid rgba(201,168,76,0.2); padding: 6px 16px;
+    background: rgba(201,168,76,0.04);
+  }
+  .hero-scroll {
+    position: absolute; bottom: 48px; left: 50%; transform: translateX(-50%);
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    opacity: 0; animation: fadeUp 0.9s 1s forwards;
+  }
+  .hero-scroll span {
+    font-family: var(--font-mono); font-size: 8px; letter-spacing: 0.4em;
+    text-transform: uppercase; color: rgba(245,240,232,0.25);
+  }
+  .scroll-line {
+    width: 1px; height: 48px;
+    background: linear-gradient(to bottom, var(--gold), transparent);
+    animation: scrollPulse 2s ease-in-out infinite;
+  }
 
-      .scan-line {
-        position: fixed;
-        top: 0; left: 0;
-        width: 100%; height: 2px;
-        background: linear-gradient(90deg, transparent, rgba(201,168,76,0.15), transparent);
-        animation: scanLine 8s linear infinite;
-        pointer-events: none;
-        z-index: 9999;
-      }
+  /* 3D GIFT BOX */
+  .gift-3d-wrap {
+    margin: 0 auto 48px; width: 160px; height: 160px; perspective: 600px;
+    opacity: 0; animation: fadeUp 0.9s 0.4s forwards;
+  }
+  .gift-3d {
+    width: 100%; height: 100%; position: relative;
+    transform-style: preserve-3d; animation: rotateGift 8s linear infinite;
+  }
+  .gift-face {
+    position: absolute; width: 120px; height: 120px;
+    border: 1px solid rgba(201,168,76,0.3); background: rgba(201,168,76,0.04);
+    backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center;
+  }
+  .gift-face::before { content: ''; position: absolute; inset: 8px; border: 1px solid rgba(201,168,76,0.12); }
+  .gift-face.front  { transform: translateZ(60px); }
+  .gift-face.back   { transform: rotateY(180deg) translateZ(60px); }
+  .gift-face.left   { transform: rotateY(-90deg) translateZ(60px); }
+  .gift-face.right  { transform: rotateY(90deg) translateZ(60px); }
+  .gift-face.top    { transform: rotateX(90deg) translateZ(60px); }
+  .gift-face.bottom { transform: rotateX(-90deg) translateZ(60px); }
+  .gift-ribbon-h {
+    position: absolute; top: 50%; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent); transform: translateY(-50%);
+  }
+  .gift-ribbon-v {
+    position: absolute; left: 50%; top: 0; bottom: 0; width: 1px;
+    background: linear-gradient(to bottom, transparent, var(--gold), transparent); transform: translateX(-50%);
+  }
 
-      .result-content p { margin-bottom: 12px; line-height: 1.8; }
-      .result-content ul { padding-left: 20px; margin-bottom: 12px; }
-      .result-content li { margin-bottom: 8px; }
-    `;
-    document.head.appendChild(style);
-    return () => document.head.removeChild(style);
-  }, []);
-  return null;
+  /* FEATURES */
+  .features-section { padding: 80px 40px; border-top: 1px solid rgba(201,168,76,0.08); }
+  .features-inner {
+    max-width: 1200px; margin: 0 auto;
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 2px;
+  }
+  .feature-tile {
+    padding: 48px 36px; background: var(--dark2); border: 1px solid rgba(201,168,76,0.06);
+    position: relative; overflow: hidden;
+    transition: transform 0.4s cubic-bezier(0.165,0.84,0.44,1), background 0.3s;
+  }
+  .feature-tile::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+    opacity: 0; transition: opacity 0.4s;
+  }
+  .feature-tile:hover::before { opacity: 1; }
+  .feature-tile:hover { transform: translateY(-4px); background: var(--dark3); }
+  .feature-num {
+    font-family: var(--font-display); font-size: 80px; font-weight: 900;
+    color: rgba(201,168,76,0.06); line-height: 1; position: absolute;
+    top: 16px; right: 20px; letter-spacing: -0.04em; user-select: none;
+  }
+  .feature-icon-3d { width: 56px; height: 56px; margin-bottom: 28px; position: relative; transform-style: preserve-3d; }
+  .icon-cube {
+    width: 40px; height: 40px; position: relative; transform-style: preserve-3d;
+    transform: rotateX(20deg) rotateY(-30deg); transition: transform 0.5s ease;
+  }
+  .feature-tile:hover .icon-cube { transform: rotateX(30deg) rotateY(30deg); }
+  .cube-face { position: absolute; width: 40px; height: 40px; border: 1px solid rgba(201,168,76,0.35); background: rgba(201,168,76,0.05); }
+  .cube-face.cf  { transform: translateZ(20px); }
+  .cube-face.cb  { transform: rotateY(180deg) translateZ(20px); }
+  .cube-face.cl  { transform: rotateY(-90deg) translateZ(20px); }
+  .cube-face.cr  { transform: rotateY(90deg) translateZ(20px); }
+  .cube-face.ct  { transform: rotateX(90deg) translateZ(20px); background: rgba(201,168,76,0.12); }
+  .cube-face.cbo { transform: rotateX(-90deg) translateZ(20px); }
+  .feature-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.35em; text-transform: uppercase; color: var(--gold); margin-bottom: 12px; }
+  .feature-title-text { font-family: var(--font-display); font-size: 22px; font-weight: 700; color: var(--cream); margin-bottom: 14px; letter-spacing: 0.02em; }
+  .feature-desc-text { font-family: var(--font-body); font-size: 16px; font-weight: 300; font-style: italic; color: rgba(245,240,232,0.38); line-height: 1.7; }
+
+  /* GENERATOR */
+  .generator-section { padding: 80px 24px 100px; display: flex; flex-direction: column; align-items: center; }
+  .section-header { text-align: center; margin-bottom: 60px; }
+  .section-eyebrow { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.5em; text-transform: uppercase; color: var(--gold); margin-bottom: 16px; }
+  .section-title { font-family: var(--font-display); font-size: clamp(36px, 5vw, 64px); font-weight: 900; color: var(--cream); text-transform: uppercase; letter-spacing: 0.04em; line-height: 0.95; }
+  .section-title em { font-style: italic; color: var(--gold); }
+
+  .generator-card-wrap { width: 100%; max-width: 760px; perspective: 1200px; }
+  .generator-card {
+    background: linear-gradient(145deg, #17140c 0%, #13110a 60%, #0f0d08 100%);
+    border: 1px solid rgba(201,168,76,0.15); padding: 60px 60px 52px;
+    position: relative; overflow: hidden; transform-style: preserve-3d;
+    transition: transform 0.6s cubic-bezier(0.165,0.84,0.44,1);
+    box-shadow: 0 0 0 1px rgba(201,168,76,0.06), 0 40px 80px rgba(0,0,0,0.8), 0 80px 120px rgba(0,0,0,0.5), inset 0 1px 0 rgba(201,168,76,0.12), inset 0 -1px 0 rgba(201,168,76,0.04);
+  }
+  .generator-card::before { content: ''; position: absolute; top: 16px; left: 16px; width: 32px; height: 32px; border-top: 1px solid rgba(201,168,76,0.4); border-left: 1px solid rgba(201,168,76,0.4); }
+  .generator-card::after  { content: ''; position: absolute; bottom: 16px; right: 16px; width: 32px; height: 32px; border-bottom: 1px solid rgba(201,168,76,0.4); border-right: 1px solid rgba(201,168,76,0.4); }
+  .card-top-line { position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent 10%, var(--gold) 50%, transparent 90%); opacity: 0.6; }
+  .card-inner-glow { position: absolute; top: -80px; left: 50%; transform: translateX(-50%); width: 400px; height: 200px; background: radial-gradient(ellipse, rgba(201,168,76,0.07) 0%, transparent 70%); pointer-events: none; }
+  .card-watermark { position: absolute; bottom: 24px; right: 28px; font-family: var(--font-display); font-size: 80px; font-weight: 900; color: rgba(201,168,76,0.03); line-height: 1; user-select: none; letter-spacing: -0.04em; }
+  .card-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.5em; text-transform: uppercase; color: var(--gold); margin-bottom: 8px; opacity: 0.8; }
+  .card-heading { font-family: var(--font-display); font-size: 32px; font-weight: 700; color: var(--cream); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 40px; }
+
+  .prompt-tabs { display: flex; margin-bottom: 24px; border: 1px solid rgba(201,168,76,0.12); }
+  .prompt-tab { flex: 1; padding: 10px 16px; font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; background: transparent; border: none; border-right: 1px solid rgba(201,168,76,0.12); color: rgba(245,240,232,0.3); cursor: none; transition: all 0.3s; }
+  .prompt-tab:last-child { border-right: none; }
+  .prompt-tab.active { background: rgba(201,168,76,0.08); color: var(--gold); }
+
+  .input-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .input-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.3em; text-transform: uppercase; color: rgba(245,240,232,0.3); }
+  .char-count { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.1em; color: rgba(201,168,76,0.4); }
+
+  .textarea-wrap { position: relative; }
+  .prompt-textarea { width: 100%; background: rgba(245,240,232,0.02); border: 1px solid rgba(201,168,76,0.15); color: var(--cream); font-family: var(--font-body); font-size: 16px; font-weight: 300; font-style: italic; line-height: 1.8; padding: 20px 22px; resize: none; outline: none; transition: border-color 0.3s, box-shadow 0.3s; letter-spacing: 0.02em; }
+  .prompt-textarea:focus { border-color: rgba(201,168,76,0.4); box-shadow: 0 0 0 3px rgba(201,168,76,0.06), 0 0 24px rgba(201,168,76,0.05); }
+  .prompt-textarea::placeholder { color: rgba(245,240,232,0.2); }
+  .textarea-scanner { position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, var(--gold), transparent); opacity: 0; pointer-events: none; }
+
+  .quick-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  .quick-chip { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.15em; text-transform: uppercase; color: rgba(245,240,232,0.35); border: 1px solid rgba(201,168,76,0.12); padding: 5px 12px; cursor: none; background: transparent; transition: all 0.2s; }
+  .quick-chip:hover { background: rgba(201,168,76,0.07); color: var(--gold); border-color: rgba(201,168,76,0.3); }
+
+  .submit-btn { width: 100%; margin-top: 28px; padding: 20px 32px; background: transparent; border: 1px solid var(--gold); color: var(--gold); font-family: var(--font-mono); font-size: 11px; font-weight: 700; letter-spacing: 0.4em; text-transform: uppercase; cursor: none; position: relative; overflow: hidden; transition: color 0.4s; }
+  .submit-btn::before { content: ''; position: absolute; inset: 0; background: var(--gold); transform: translateX(-101%); transition: transform 0.4s cubic-bezier(0.165,0.84,0.44,1); }
+  .submit-btn:hover::before { transform: translateX(0); }
+  .submit-btn:hover { color: var(--dark); }
+  .submit-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .submit-btn span { position: relative; z-index: 1; }
+
+  .loading-bar { height: 1px; background: rgba(201,168,76,0.15); margin-top: 20px; overflow: hidden; }
+  .loading-fill { height: 100%; background: linear-gradient(90deg, transparent, var(--gold), transparent); animation: loadFill 1.4s ease-in-out infinite; }
+
+  .result-outer { margin-top: 40px; border: 1px solid rgba(201,168,76,0.12); position: relative; overflow: hidden; animation: fadeUp 0.6s ease forwards; }
+  .result-outer::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, var(--gold), transparent); opacity: 0.5; }
+  .result-header { display: flex; align-items: center; gap: 10px; padding: 12px 20px; background: rgba(201,168,76,0.04); border-bottom: 1px solid rgba(201,168,76,0.08); }
+  .result-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 10px var(--gold); animation: blink 2s ease-in-out infinite; }
+  .result-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.4em; text-transform: uppercase; color: rgba(245,240,232,0.35); }
+  .result-body { padding: 32px 28px; background: rgba(245,240,232,0.01); font-family: var(--font-body); font-size: 17px; font-weight: 300; line-height: 1.85; color: rgba(245,240,232,0.8); letter-spacing: 0.02em; }
+
+  /* STATS */
+  .stats-section { border-top: 1px solid rgba(201,168,76,0.08); border-bottom: 1px solid rgba(201,168,76,0.08); padding: 60px 40px; background: rgba(201,168,76,0.025); }
+  .stats-inner { max-width: 900px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 40px; text-align: center; }
+  .stat-item { position: relative; }
+  .stat-item::after { content: ''; position: absolute; right: 0; top: 20%; bottom: 20%; width: 1px; background: rgba(201,168,76,0.1); }
+  .stat-item:last-child::after { display: none; }
+  .stat-num { font-family: var(--font-display); font-size: clamp(40px, 5vw, 64px); font-weight: 900; color: var(--cream); letter-spacing: -0.02em; line-height: 1; margin-bottom: 8px; }
+  .stat-num span { color: var(--gold); }
+  .stat-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.35em; text-transform: uppercase; color: rgba(245,240,232,0.3); }
+
+  /* HOW IT WORKS */
+  .how-section { padding: 100px 40px; max-width: 1200px; margin: 0 auto; }
+  .steps-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0; border: 1px solid rgba(201,168,76,0.08); margin-top: 60px; }
+  .step-cell { padding: 48px 36px; border-right: 1px solid rgba(201,168,76,0.08); position: relative; overflow: hidden; transition: background 0.4s; }
+  .step-cell:last-child { border-right: none; }
+  .step-cell:hover { background: rgba(201,168,76,0.025); }
+  .step-cell::before { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, var(--gold), transparent); opacity: 0; transition: opacity 0.4s; }
+  .step-cell:hover::before { opacity: 0.4; }
+  .step-index { font-family: var(--font-display); font-size: 72px; font-weight: 900; color: rgba(201,168,76,0.08); line-height: 1; margin-bottom: 24px; letter-spacing: -0.04em; transition: color 0.4s; }
+  .step-cell:hover .step-index { color: rgba(201,168,76,0.15); }
+  .step-name { font-family: var(--font-display); font-size: 20px; font-weight: 700; color: var(--cream); letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 12px; }
+  .step-text { font-family: var(--font-body); font-size: 15px; font-weight: 300; font-style: italic; color: rgba(245,240,232,0.38); line-height: 1.7; }
+
+  /* TESTIMONIALS */
+  .testi-section { padding: 80px 40px 100px; border-top: 1px solid rgba(201,168,76,0.08); background: var(--dark2); }
+  .testi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 2px; max-width: 1100px; margin: 60px auto 0; }
+  .testi-card { background: var(--dark); border: 1px solid rgba(201,168,76,0.07); padding: 40px 36px; position: relative; overflow: hidden; transition: transform 0.4s cubic-bezier(0.165,0.84,0.44,1); }
+  .testi-card::before { content: '"'; position: absolute; top: 16px; left: 24px; font-family: var(--font-display); font-size: 80px; color: rgba(201,168,76,0.06); line-height: 1; font-weight: 900; }
+  .testi-card:hover { transform: translateY(-4px); }
+  .testi-stars { display: flex; gap: 4px; margin-bottom: 20px; }
+  .star { width: 10px; height: 10px; background: var(--gold); clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); opacity: 0.8; }
+  .testi-quote { font-family: var(--font-body); font-size: 17px; font-weight: 300; font-style: italic; color: rgba(245,240,232,0.55); line-height: 1.75; margin-bottom: 28px; }
+  .testi-author { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.35em; text-transform: uppercase; color: var(--gold); opacity: 0.8; }
+  .testi-role { font-family: var(--font-mono); font-size: 8px; letter-spacing: 0.2em; color: rgba(245,240,232,0.2); margin-top: 4px; }
+
+  /* MARQUEE */
+  .marquee-section { border-top: 1px solid rgba(201,168,76,0.08); border-bottom: 1px solid rgba(201,168,76,0.08); padding: 20px 0; overflow: hidden; background: rgba(201,168,76,0.02); }
+  .marquee-track { display: flex; gap: 60px; animation: marquee 20s linear infinite; width: max-content; }
+  .marquee-item { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.4em; text-transform: uppercase; color: rgba(201,168,76,0.3); white-space: nowrap; display: flex; align-items: center; gap: 20px; }
+  .marquee-item::after { content: ''; width: 4px; height: 4px; background: var(--gold); opacity: 0.4; transform: rotate(45deg); flex-shrink: 0; }
+
+  /* FOOTER */
+  .site-footer { background: #080604; border-top: 1px solid rgba(201,168,76,0.08); padding: 72px 48px 32px; }
+  .footer-inner { max-width: 1200px; margin: 0 auto; }
+  .footer-top { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 60px; margin-bottom: 60px; }
+  .footer-brand { font-family: var(--font-display); font-size: 28px; font-weight: 900; color: var(--cream); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 16px; }
+  .footer-brand span { color: var(--gold); }
+  .footer-tagline { font-family: var(--font-body); font-size: 15px; font-weight: 300; font-style: italic; color: rgba(245,240,232,0.28); line-height: 1.7; max-width: 280px; }
+  .footer-col-title { font-family: var(--font-mono); font-size: 8px; letter-spacing: 0.4em; text-transform: uppercase; color: rgba(201,168,76,0.6); margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid rgba(201,168,76,0.1); }
+  .footer-links { list-style: none; }
+  .footer-links li { margin-bottom: 12px; font-family: var(--font-body); font-size: 15px; font-weight: 300; color: rgba(245,240,232,0.3); cursor: none; transition: color 0.2s; }
+  .footer-links li:hover { color: var(--gold); }
+  .footer-bottom { border-top: 1px solid rgba(201,168,76,0.06); padding-top: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+  .footer-copy { font-family: var(--font-mono); font-size: 8px; letter-spacing: 0.25em; text-transform: uppercase; color: rgba(245,240,232,0.18); }
+
+  /* MD */
+  .md-body h1 { font-family: var(--font-display); font-size: 24px; font-weight: 700; color: var(--cream); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 16px; }
+  .md-body h2 { font-family: var(--font-display); font-size: 19px; color: var(--gold-light); margin: 24px 0 12px; letter-spacing: 0.04em; text-transform: uppercase; }
+  .md-body h3 { font-family: var(--font-mono); font-size: 11px; color: var(--gold); letter-spacing: 0.2em; text-transform: uppercase; margin: 20px 0 8px; }
+  .md-body p { margin-bottom: 14px; }
+  .md-body ul, .md-body ol { padding-left: 24px; margin-bottom: 14px; }
+  .md-body li { margin-bottom: 8px; color: rgba(245,240,232,0.75); }
+  .md-body strong { color: #d4c190; font-weight: 600; }
+  .md-body em { color: rgba(245,240,232,0.6); }
+  .md-body code { background: rgba(201,168,76,0.1); border: 1px solid rgba(201,168,76,0.15); padding: 1px 6px; font-family: var(--font-mono); font-size: 12px; color: var(--gold-light); }
+  .md-body blockquote { border-left: 2px solid var(--gold); padding-left: 16px; margin: 14px 0; font-style: italic; color: rgba(245,240,232,0.5); }
+  .md-body hr { border: none; border-top: 1px solid rgba(201,168,76,0.12); margin: 20px 0; }
+
+  /* ANIMATIONS */
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes rotateGift { from { transform: rotateX(12deg) rotateY(0deg); } to { transform: rotateX(12deg) rotateY(360deg); } }
+  @keyframes loadFill { 0% { transform: translateX(-100%); } 50% { transform: translateX(100%); } 100% { transform: translateX(100%); } }
+  @keyframes scrollPulse { 0%,100% { opacity: 0.3; } 50% { opacity: 1; } }
+  @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+  @keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+  /* RESPONSIVE */
+  @media (max-width: 768px) {
+    .site-header { padding: 0 20px; height: 60px; }
+    .header-nav { display: none; }
+    .hero { padding: 100px 20px 60px; }
+    .generator-card { padding: 36px 24px 32px; }
+    .footer-top { grid-template-columns: 1fr; gap: 32px; }
+    .features-section { padding: 60px 20px; }
+    .how-section { padding: 60px 20px; }
+    .steps-grid { grid-template-columns: 1fr 1fr; }
+    .testi-section { padding: 60px 20px; }
+    .stats-section { padding: 40px 20px; }
+    .site-footer { padding: 48px 20px 24px; }
+    .step-cell:nth-child(2n) { border-right: none; }
+    .stat-item::after { display: none; }
+  }
+  @media (max-width: 480px) {
+    .steps-grid { grid-template-columns: 1fr; }
+    .step-cell { border-right: none; border-bottom: 1px solid rgba(201,168,76,0.08); }
+    .hero-title { letter-spacing: 0; }
+    .generator-card { padding: 28px 18px; }
+    .prompt-tabs { overflow-x: auto; }
+  }
+`;
+
+/* ── ReactMarkdown renderers ── */
+const mdComponents = {
+  h1: ({ children }) => <h1>{children}</h1>,
+  h2: ({ children }) => <h2>{children}</h2>,
+  h3: ({ children }) => <h3>{children}</h3>,
+  p:  ({ children }) => <p>{children}</p>,
+  ul: ({ children }) => <ul>{children}</ul>,
+  ol: ({ children }) => <ol>{children}</ol>,
+  li: ({ children }) => <li>{children}</li>,
+  strong: ({ children }) => <strong>{children}</strong>,
+  em:     ({ children }) => <em>{children}</em>,
+  code:   ({ children }) => <code>{children}</code>,
+  blockquote: ({ children }) => <blockquote>{children}</blockquote>,
+  hr: () => <hr />,
 };
 
-/* ─── 3D Crystal Gem SVG ─────────────────────────────────────────────────── */
-const CrystalGem = ({ size = 120, style = {} }) => (
-  <svg
-    viewBox="0 0 200 220"
-    width={size}
-    height={size}
-    style={{ filter: "drop-shadow(0 0 30px rgba(201,168,76,0.6)) drop-shadow(0 0 60px rgba(201,168,76,0.3))", ...style }}
-  >
-    <defs>
-      <linearGradient id="gem-top" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#f5e19a" stopOpacity="0.95" />
-        <stop offset="50%" stopColor="#c9a84c" stopOpacity="0.85" />
-        <stop offset="100%" stopColor="#7b4f12" stopOpacity="0.9" />
-      </linearGradient>
-      <linearGradient id="gem-left" x1="0%" y1="0%" x2="100%" y2="0%">
-        <stop offset="0%" stopColor="#3a2a08" stopOpacity="0.95" />
-        <stop offset="100%" stopColor="#c9a84c" stopOpacity="0.7" />
-      </linearGradient>
-      <linearGradient id="gem-right" x1="0%" y1="0%" x2="100%" y2="0%">
-        <stop offset="0%" stopColor="#f5e19a" stopOpacity="0.9" />
-        <stop offset="100%" stopColor="#9a6f20" stopOpacity="0.8" />
-      </linearGradient>
-      <linearGradient id="gem-bottom-left" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#c9a84c" stopOpacity="0.8" />
-        <stop offset="100%" stopColor="#2a1a04" stopOpacity="0.95" />
-      </linearGradient>
-      <linearGradient id="gem-bottom-right" x1="100%" y1="0%" x2="0%" y2="100%">
-        <stop offset="0%" stopColor="#f5e19a" stopOpacity="0.7" />
-        <stop offset="100%" stopColor="#4a2e08" stopOpacity="0.95" />
-      </linearGradient>
-      <linearGradient id="gem-crown" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#fff9e0" stopOpacity="1" />
-        <stop offset="100%" stopColor="#c9a84c" stopOpacity="0.9" />
-      </linearGradient>
-      <filter id="gem-glow">
-        <feGaussianBlur stdDeviation="3" result="blur" />
-        <feComposite in="SourceGraphic" in2="blur" operator="over" />
-      </filter>
-    </defs>
-    {/* Crown facets */}
-    <polygon points="100,10 55,70 100,50" fill="url(#gem-crown)" />
-    <polygon points="100,10 145,70 100,50" fill="url(#gem-right)" />
-    <polygon points="100,10 55,70 30,55" fill="url(#gem-left)" />
-    <polygon points="100,10 145,70 170,55" fill="url(#gem-top)" />
-    <polygon points="30,55 55,70 100,50 70,45" fill="url(#gem-left)" opacity="0.8"/>
-    <polygon points="170,55 145,70 100,50 130,45" fill="url(#gem-right)" opacity="0.8"/>
-    {/* Girdle */}
-    <polygon points="30,55 55,70 55,90 30,75" fill="url(#gem-left)" opacity="0.9"/>
-    <polygon points="170,55 145,70 145,90 170,75" fill="url(#gem-right)" opacity="0.9"/>
-    {/* Pavilion */}
-    <polygon points="30,75 55,90 100,210" fill="url(#gem-bottom-left)" />
-    <polygon points="170,75 145,90 100,210" fill="url(#gem-bottom-right)" />
-    <polygon points="55,90 145,90 100,210" fill="url(#gem-top)" opacity="0.85" />
-    {/* Table */}
-    <polygon points="55,70 145,70 145,90 55,90" fill="url(#gem-top)" opacity="0.9" />
-    {/* Highlight */}
-    <polygon points="75,72 100,65 115,72 100,78" fill="rgba(255,250,220,0.85)" filter="url(#gem-glow)" />
-    <ellipse cx="82" cy="74" rx="6" ry="3" fill="rgba(255,255,255,0.7)" />
-  </svg>
-);
+/* ── WebGL Background ── */
+function BGCanvas() {
+  const ref = useRef(null);
+  useEffect(() => {
+    const canvas = ref.current;
+    if (!canvas) return;
+    const gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
+    if (!gl) return;
+    const resize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; gl.viewport(0, 0, canvas.width, canvas.height); };
+    resize();
+    window.addEventListener("resize", resize);
 
-/* ─── 3D Floating Orb ───────────────────────────────────────────────────────── */
-const Orb = ({ x, y, size, delay, color }) => (
-  <div style={{
-    position: "absolute",
-    left: x, top: y,
-    width: size, height: size,
-    borderRadius: "50%",
-    background: `radial-gradient(circle at 35% 35%, ${color}40, ${color}10 50%, transparent 70%)`,
-    border: `1px solid ${color}25`,
-    boxShadow: `0 0 ${size}px ${color}15, inset 0 0 ${size/2}px ${color}08`,
-    animation: `floatY ${3 + delay}s ease-in-out infinite`,
-    animationDelay: `${delay}s`,
-    pointerEvents: "none",
-  }} />
-);
+    const vsrc = `attribute vec2 pos; void main() { gl_Position = vec4(pos, 0.0, 1.0); }`;
+    const fsrc = `
+      precision mediump float;
+      uniform float time; uniform vec2 res;
+      float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+      float noise(vec2 p) {
+        vec2 i = floor(p), f = fract(p); f = f*f*(3.0-2.0*f);
+        return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);
+      }
+      void main() {
+        vec2 p = (gl_FragCoord.xy - res*0.5) / min(res.x, res.y);
+        vec2 uv = gl_FragCoord.xy / res;
+        float t = time * 0.18;
+        float n = noise(p*2.8+t*0.5)*0.5 + noise(p*5.2-t*0.3)*0.25 + noise(p*11.0+t*0.7)*0.125;
+        float r = length(p);
+        float glow = exp(-r*2.2)*0.15;
+        vec3 gold = vec3(0.79,0.67,0.30); vec3 dark = vec3(0.047,0.039,0.024);
+        vec3 col = mix(dark, gold, n*0.22+glow);
+        col += gold*(1.0-smoothstep(0.0,0.4,r))*0.06;
+        float grid = step(0.98, fract(uv.x*22.0)) + step(0.98, fract(uv.y*14.0));
+        col += vec3(0.8,0.67,0.3)*grid*0.04;
+        gl_FragColor = vec4(col, 1.0);
+      }
+    `;
+    const compile = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); return s; };
+    const prog = gl.createProgram();
+    gl.attachShader(prog, compile(gl.VERTEX_SHADER, vsrc));
+    gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, fsrc));
+    gl.linkProgram(prog); gl.useProgram(prog);
+    const buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,1,-1,-1,1,1,1]), gl.STATIC_DRAW);
+    const posLoc = gl.getAttribLocation(prog, "pos");
+    const timeLoc = gl.getUniformLocation(prog, "time");
+    const resLoc = gl.getUniformLocation(prog, "res");
+    gl.enableVertexAttribArray(posLoc);
+    gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
+    let raf;
+    const draw = (t) => { gl.uniform1f(timeLoc, t*0.001); gl.uniform2f(resLoc, canvas.width, canvas.height); gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4); raf = requestAnimationFrame(draw); };
+    raf = requestAnimationFrame(draw);
+    return () => { cancelAnimationFrame(raf); window.removeEventListener("resize", resize); };
+  }, []);
+  return <canvas id="bg-canvas" ref={ref} />;
+}
 
-/* ─── Animated Particles ─────────────────────────────────────────────────── */
-const Particles = () => {
-  const particles = Array.from({ length: 25 }, (_, i) => ({
-    id: i,
-    left: `${Math.random() * 100}%`,
-    duration: `${8 + Math.random() * 12}s`,
-    delay: `${Math.random() * 10}s`,
-    size: `${1 + Math.random() * 2}px`,
-    color: Math.random() > 0.5 ? "rgba(201,168,76,0.6)" : "rgba(240,208,128,0.4)",
-  }));
+/* ── Cursor ── */
+function Cursor() {
+  const dotRef  = useRef(null);
+  const ringRef = useRef(null);
+  const mouse = useRef({ x: 0, y: 0 });
+  const ring  = useRef({ x: 0, y: 0 });
+  useEffect(() => {
+    const onMove = (e) => { mouse.current = { x: e.clientX, y: e.clientY }; };
+    window.addEventListener("mousemove", onMove);
+    let raf;
+    const tick = () => {
+      ring.current.x += (mouse.current.x - ring.current.x) * 0.12;
+      ring.current.y += (mouse.current.y - ring.current.y) * 0.12;
+      if (dotRef.current) { dotRef.current.style.left = mouse.current.x+"px"; dotRef.current.style.top = mouse.current.y+"px"; }
+      if (ringRef.current) { ringRef.current.style.left = ring.current.x+"px"; ringRef.current.style.top = ring.current.y+"px"; }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => { cancelAnimationFrame(raf); window.removeEventListener("mousemove", onMove); };
+  }, []);
+  return (<><div className="cursor-dot" ref={dotRef} /><div className="cursor-ring" ref={ringRef} /></>);
+}
 
+/* ── Gift 3D Box ── */
+function GiftBox3D() {
   return (
-    <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0, overflow: "hidden" }}>
-      {particles.map(p => (
-        <div
-          key={p.id}
-          className="particle"
-          style={{
-            left: p.left,
-            bottom: "-10px",
-            width: p.size,
-            height: p.size,
-            background: p.color,
-            animation: `particleDrift ${p.duration} ease-in infinite`,
-            animationDelay: p.delay,
-            boxShadow: `0 0 4px ${p.color}`,
-          }}
-        />
-      ))}
+    <div className="gift-3d-wrap">
+      <div className="gift-3d">
+        {["front","back","left","right","top","bottom"].map(f => (
+          <div key={f} className={`gift-face ${f}`}>
+            <div className="gift-ribbon-h" /><div className="gift-ribbon-v" />
+          </div>
+        ))}
+      </div>
     </div>
   );
-};
+}
 
-/* ─── 3D Ring decoration ─────────────────────────────────────────────────── */
-const Ring3D = ({ style = {} }) => (
-  <div style={{
-    width: 200, height: 200,
-    borderRadius: "50%",
-    border: "1px solid rgba(201,168,76,0.2)",
-    boxShadow: "inset 0 0 30px rgba(201,168,76,0.05), 0 0 30px rgba(201,168,76,0.05)",
-    animation: "ringPulse 4s ease-in-out infinite",
-    position: "absolute",
-    ...style,
-  }}>
-    <div style={{
-      position: "absolute",
-      inset: 15,
-      borderRadius: "50%",
-      border: "1px solid rgba(201,168,76,0.1)",
-      animation: "ringPulse 4s ease-in-out infinite",
-      animationDelay: "0.5s",
-    }} />
-  </div>
-);
+/* ── Icon Cube ── */
+function IconCube() {
+  return (
+    <div className="feature-icon-3d">
+      <div className="icon-cube">
+        {["cf","cb","cl","cr","ct","cbo"].map(f => <div key={f} className={`cube-face ${f}`} />)}
+      </div>
+    </div>
+  );
+}
 
-/* ─── Markdown Components ─────────────────────────────────────────────────── */
-const mdComponents = {
-  h1: ({ children }) => <h1 style={{ fontSize: 22, color: "#f0d080", marginBottom: 12, fontFamily: "'Cormorant Garamond', serif", fontWeight: 600, letterSpacing: 2 }}>{children}</h1>,
-  h2: ({ children }) => <h2 style={{ fontSize: 18, color: "#c9a84c", marginBottom: 10, marginTop: 20, fontFamily: "'Cormorant Garamond', serif", fontWeight: 600 }}>{children}</h2>,
-  h3: ({ children }) => <h3 style={{ fontSize: 15, color: "#d4b060", marginBottom: 8, marginTop: 16, fontFamily: "'Rajdhani', sans-serif", letterSpacing: 2 }}>{children}</h3>,
-  p: ({ children }) => <p style={{ marginBottom: 12, lineHeight: 1.8, color: "rgba(230,210,160,0.85)" }}>{children}</p>,
-  ul: ({ children }) => <ul style={{ paddingLeft: 20, marginBottom: 12 }}>{children}</ul>,
-  ol: ({ children }) => <ol style={{ paddingLeft: 20, marginBottom: 12 }}>{children}</ol>,
-  li: ({ children }) => <li style={{ marginBottom: 8, color: "rgba(230,210,160,0.8)" }}>{children}</li>,
-  strong: ({ children }) => <strong style={{ color: "#f0d080", fontWeight: 600 }}>{children}</strong>,
-  em: ({ children }) => <em style={{ color: "rgba(201,168,76,0.8)" }}>{children}</em>,
-  code: ({ children }) => <code style={{ background: "rgba(201,168,76,0.12)", border: "1px solid rgba(201,168,76,0.2)", borderRadius: 3, padding: "1px 6px", fontSize: 13, color: "#f0d080", fontFamily: "'Space Mono', monospace" }}>{children}</code>,
-  blockquote: ({ children }) => <blockquote style={{ borderLeft: "2px solid #c9a84c", paddingLeft: 16, margin: "12px 0", color: "rgba(201,168,76,0.7)", fontStyle: "italic" }}>{children}</blockquote>,
-  hr: () => <hr style={{ border: "none", borderTop: "1px solid rgba(201,168,76,0.15)", margin: "20px 0" }} />,
-};
-
-/* ─── Main App ────────────────────────────────────────────────────────────── */
-function App() {
+/* ── App ── */
+export default function App() {
   const [prompt, setPrompt] = useState("");
   const [result, setResult] = useState("");
   const [loading, setLoading] = useState(false);
-  const [mounted, setMounted] = useState(false);
-  const heroRef = useRef(null);
+  const [activeTab, setActiveTab] = useState(0);
+  const cardRef = useRef(null);
 
-  useEffect(() => {
-    setTimeout(() => setMounted(true), 100);
-  }, []);
+  const tabs  = ["Describe Recipient", "Set Occasion", "Set Budget"];
+  const chips = ["Birthday", "Wedding", "Anniversary", "Corporate", "Holiday", "Graduation", "Romantic", "Kids"];
 
   /* ── MAIN LOGIC UNCHANGED ── */
   const handleSubmit = async () => {
     if (!prompt) return alert("Enter a prompt");
-    setLoading(true);
-    setResult("");
+    setLoading(true); setResult("");
     try {
       const res = await generateResponse({ prompt });
       setResult(res.data.result || res.data.error);
-    } catch (err) {
-      setResult("Server error.");
-    }
+    } catch { setResult("Server error."); }
     setLoading(false);
   };
 
-  /* Parallax on hero */
-  useEffect(() => {
-    const handleMouseMove = (e) => {
-      if (!heroRef.current) return;
-      const { clientX, clientY, currentTarget } = e;
-      const rect = document.documentElement.getBoundingClientRect();
-      const xPct = (clientX / rect.width - 0.5) * 20;
-      const yPct = (clientY / rect.height - 0.5) * 10;
-      heroRef.current.style.transform = `perspective(1200px) rotateX(${-yPct * 0.3}deg) rotateY(${xPct * 0.2}deg)`;
-    };
-    window.addEventListener("mousemove", handleMouseMove);
-    return () => window.removeEventListener("mousemove", handleMouseMove);
+  /* 3D card tilt */
+  const handleMouseMove = useCallback((e) => {
+    const card = cardRef.current; if (!card) return;
+    const rect = card.getBoundingClientRect();
+    const dx = (e.clientX - (rect.left + rect.width/2)) / (rect.width/2);
+    const dy = (e.clientY - (rect.top + rect.height/2)) / (rect.height/2);
+    card.style.transform = `rotateY(${dx*4}deg) rotateX(${-dy*3}deg)`;
   }, []);
+  const handleMouseLeave = useCallback(() => { if (cardRef.current) cardRef.current.style.transform = "rotateY(0deg) rotateX(0deg)"; }, []);
+
+  const appendChip = (chip) => setPrompt(p => p ? `${p}, ${chip}` : chip);
 
   return (
     <>
-      <FontLink />
-      <GlobalCSS />
+      <style>{GLOBAL_CSS}</style>
+      <BGCanvas />
+      <div className="noise" />
+      <Cursor />
 
-      {/* Scan line effect */}
-      <div className="scan-line" />
-      <Particles />
+      <div className="app-root">
 
-      <div style={{
-        fontFamily: "'Rajdhani', sans-serif",
-        background: "#03030a",
-        minHeight: "100vh",
-        color: "#e8e0c8",
-        overflowX: "hidden",
-        position: "relative",
-        zIndex: 1,
-      }}>
-
-        {/* ── HEADER ── */}
-        <header style={{
-          position: "sticky",
-          top: 0, zIndex: 100,
-          background: "rgba(3,3,10,0.75)",
-          backdropFilter: "blur(24px) saturate(180%)",
-          borderBottom: "1px solid rgba(201,168,76,0.1)",
-          padding: "0 48px",
-          height: 68,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}>
-          {/* Left ornament */}
-          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <div style={{ width: 28, height: 28, position: "relative" }}>
-              <CrystalGem size={28} />
-            </div>
-            <span style={{
-              fontFamily: "'Cormorant Garamond', serif",
-              fontSize: 24,
-              letterSpacing: 8,
-              color: "#c9a84c",
-              fontWeight: 600,
-              textShadow: "0 0 30px rgba(201,168,76,0.5), 0 0 60px rgba(201,168,76,0.2)",
-              background: "linear-gradient(135deg, #f5e19a, #c9a84c, #7b4f12)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              backgroundClip: "text",
-            }}>GIFTGENIX</span>
-          </div>
-          <div style={{ display: "flex", gap: 2, alignItems: "center" }}>
-            {/* Decorative line */}
-            <div style={{ width: 40, height: 1, background: "linear-gradient(90deg, transparent, rgba(201,168,76,0.3))", marginRight: 24 }} />
-            {["Generate", "How It Works", "Features", "Docs"].map((n, i) => (
-              <a key={n} className="nav-link" style={{ padding: "4px 16px" }}>{n}</a>
-            ))}
-          </div>
+        {/* HEADER */}
+        <header className="site-header">
+          <div className="header-logo">Gift<span>Genix</span></div>
+          <ul className="header-nav">
+            {["Generate","How It Works","Features","Docs"].map(n => <li key={n}><a>{n}</a></li>)}
+          </ul>
+          <button className="header-cta">Try Free</button>
         </header>
 
-        {/* ── HERO ── */}
-        <section style={{
-          position: "relative",
-          textAlign: "center",
-          padding: "110px 24px 80px",
-          overflow: "hidden",
-          minHeight: "70vh",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-        }}>
-          {/* Layered atmospheric backgrounds */}
-          <div style={{
-            position: "absolute", inset: 0,
-            background: "radial-gradient(ellipse 60% 50% at 50% -10%, rgba(201,168,76,0.12) 0%, transparent 70%)",
-            pointerEvents: "none",
-          }} />
-          <div style={{
-            position: "absolute", inset: 0,
-            background: "radial-gradient(ellipse 40% 60% at 20% 80%, rgba(120,80,20,0.08) 0%, transparent 60%)",
-            pointerEvents: "none",
-          }} />
-          <div style={{
-            position: "absolute", inset: 0,
-            background: "radial-gradient(ellipse 40% 60% at 80% 80%, rgba(201,168,76,0.06) 0%, transparent 60%)",
-            pointerEvents: "none",
-          }} />
-
-          {/* Grid pattern */}
-          <div style={{
-            position: "absolute", inset: 0,
-            backgroundImage: "linear-gradient(rgba(201,168,76,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(201,168,76,0.04) 1px, transparent 1px)",
-            backgroundSize: "60px 60px",
-            pointerEvents: "none",
-            maskImage: "radial-gradient(ellipse 80% 70% at 50% 50%, black 30%, transparent 100%)",
-            WebkitMaskImage: "radial-gradient(ellipse 80% 70% at 50% 50%, black 30%, transparent 100%)",
-          }} />
-
-          {/* Floating orbs */}
-          <Orb x="8%" y="20%" size={180} delay={0} color="#c9a84c" />
-          <Orb x="78%" y="15%" size={120} delay={1.5} color="#d4a84c" />
-          <Orb x="60%" y="65%" size={80} delay={0.8} color="#f0d080" />
-          <Orb x="12%" y="70%" size={100} delay={2} color="#c9a84c" />
-
-          {/* Ring decorations */}
-          <Ring3D style={{ left: "5%", top: "10%", width: 160, height: 160 }} />
-          <Ring3D style={{ right: "8%", bottom: "15%", width: 120, height: 120, animationDelay: "2s" }} />
-
-          {/* 3D Floating gem */}
-          <div
-            ref={heroRef}
-            style={{
-              position: "relative", zIndex: 2,
-              display: "flex", flexDirection: "column",
-              alignItems: "center",
-              transformStyle: "preserve-3d",
-              transition: "transform 0.1s ease-out",
-              opacity: mounted ? 1 : 0,
-              animation: mounted ? "fadeUp 1s ease forwards" : "none",
-            }}
-          >
-            <div style={{
-              animation: "floatY 4s ease-in-out infinite",
-              marginBottom: 32,
-              filter: "drop-shadow(0 40px 80px rgba(201,168,76,0.3))",
-            }}>
-              <CrystalGem size={140} />
-            </div>
-
-            {/* Overline tag */}
-            <div style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 12,
-              border: "1px solid rgba(201,168,76,0.3)",
-              color: "#c9a84c",
-              fontSize: 10,
-              letterSpacing: 6,
-              textTransform: "uppercase",
-              padding: "6px 24px",
-              borderRadius: 1,
-              marginBottom: 32,
-              fontFamily: "'Rajdhani', sans-serif",
-              background: "rgba(201,168,76,0.04)",
-              backdropFilter: "blur(8px)",
-            }}>
-              <span style={{ width: 20, height: 1, background: "rgba(201,168,76,0.5)" }} />
-              AI-Powered Gift Intelligence
-              <span style={{ width: 20, height: 1, background: "rgba(201,168,76,0.5)" }} />
-            </div>
-
-            {/* Hero title with 3D text shadow */}
-            <h1 style={{
-              fontFamily: "'Cormorant Garamond', serif",
-              fontSize: "clamp(56px, 10vw, 120px)",
-              fontWeight: 700,
-              letterSpacing: 12,
-              lineHeight: 0.95,
-              textTransform: "uppercase",
-              margin: "0 0 20px",
-              background: "linear-gradient(135deg, #fff9e8 0%, #f0d080 30%, #c9a84c 60%, #7b4f12 100%)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              backgroundClip: "text",
-              filter: "drop-shadow(0 4px 24px rgba(201,168,76,0.4))",
-              textShadow: "none",
-            }}>
-              GiftGenix
-            </h1>
-
-            {/* Decorative rule */}
-            <div style={{
-              width: 180,
-              height: 1,
-              background: "linear-gradient(90deg, transparent, rgba(201,168,76,0.6), transparent)",
-              margin: "0 auto 20px",
-            }} />
-
-            <p style={{
-              fontFamily: "'Cormorant Garamond', serif",
-              fontWeight: 300,
-              fontStyle: "italic",
-              fontSize: 20,
-              letterSpacing: 4,
-              color: "rgba(201,168,76,0.55)",
-              textTransform: "uppercase",
-            }}>
-              Precision-crafted gift recommendations, generated by AI
-            </p>
+        {/* HERO */}
+        <section className="hero">
+          <div className="hero-eyebrow">AI-Powered Gift Intelligence</div>
+          <GiftBox3D />
+          <h1 className="hero-title">Gift<em>Genix</em></h1>
+          <p className="hero-sub">Precision-crafted gift recommendations, generated by artificial intelligence</p>
+          <div className="hero-badges">
+            {["Context-Aware AI","Instant Results","Any Occasion","Budget-Sensitive"].map(b => <span key={b} className="hero-badge">{b}</span>)}
           </div>
+          <div className="hero-scroll"><span>Scroll</span><div className="scroll-line" /></div>
         </section>
 
-        {/* ── FEATURE STRIP ── */}
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-          gap: 1,
-          background: "rgba(201,168,76,0.06)",
-          borderTop: "1px solid rgba(201,168,76,0.1)",
-          borderBottom: "1px solid rgba(201,168,76,0.1)",
-          margin: "0 0 0",
-        }}>
-          {[
-            {
-              icon: (
-                <svg viewBox="0 0 40 40" width="22" height="22" fill="none">
-                  <circle cx="20" cy="20" r="14" stroke="rgba(201,168,76,0.9)" strokeWidth="1.5"/>
-                  <circle cx="20" cy="20" r="8" stroke="rgba(201,168,76,0.6)" strokeWidth="1" strokeDasharray="3 3"/>
-                  <circle cx="20" cy="20" r="3" fill="#c9a84c"/>
-                  <line x1="20" y1="6" x2="20" y2="2" stroke="rgba(201,168,76,0.7)" strokeWidth="1.5"/>
-                  <line x1="20" y1="38" x2="20" y2="34" stroke="rgba(201,168,76,0.7)" strokeWidth="1.5"/>
-                  <line x1="6" y1="20" x2="2" y2="20" stroke="rgba(201,168,76,0.7)" strokeWidth="1.5"/>
-                  <line x1="38" y1="20" x2="34" y2="20" stroke="rgba(201,168,76,0.7)" strokeWidth="1.5"/>
-                </svg>
-              ),
-              title: "Context Aware",
-              desc: "Understands the person, occasion, and budget for precise results.",
-            },
-            {
-              icon: (
-                <svg viewBox="0 0 40 40" width="22" height="22" fill="none">
-                  <polygon points="20,4 24,16 37,16 27,24 31,37 20,29 9,37 13,24 3,16 16,16" stroke="rgba(201,168,76,0.9)" strokeWidth="1.5" fill="rgba(201,168,76,0.08)"/>
-                </svg>
-              ),
-              title: "Instant Results",
-              desc: "AI generates tailored ideas in seconds, not hours.",
-            },
-            {
-              icon: (
-                <svg viewBox="0 0 40 40" width="22" height="22" fill="none">
-                  <path d="M20 8 L28 14 L28 26 L20 32 L12 26 L12 14 Z" stroke="rgba(201,168,76,0.9)" strokeWidth="1.5" fill="rgba(201,168,76,0.05)"/>
-                  <path d="M20 12 L25 16 L25 24 L20 28 L15 24 L15 16 Z" stroke="rgba(201,168,76,0.5)" strokeWidth="1" fill="rgba(201,168,76,0.08)"/>
-                  <circle cx="20" cy="20" r="2" fill="#c9a84c"/>
-                </svg>
-              ),
-              title: "Deeply Personal",
-              desc: "Beyond generic lists — specific, thoughtful, memorable gifts.",
-            },
-            {
-              icon: (
-                <svg viewBox="0 0 40 40" width="22" height="22" fill="none">
-                  <rect x="8" y="8" width="24" height="24" rx="2" stroke="rgba(201,168,76,0.9)" strokeWidth="1.5" fill="rgba(201,168,76,0.05)"/>
-                  <rect x="13" y="4" width="2" height="8" rx="1" fill="rgba(201,168,76,0.8)"/>
-                  <rect x="25" y="4" width="2" height="8" rx="1" fill="rgba(201,168,76,0.8)"/>
-                  <line x1="8" y1="16" x2="32" y2="16" stroke="rgba(201,168,76,0.4)" strokeWidth="1"/>
-                  <rect x="12" y="20" width="5" height="5" rx="0.5" fill="rgba(201,168,76,0.6)"/>
-                  <rect x="23" y="20" width="5" height="5" rx="0.5" fill="rgba(201,168,76,0.4)"/>
-                </svg>
-              ),
-              title: "Any Occasion",
-              desc: "Birthdays, weddings, holidays, anniversaries, and more.",
-            },
-          ].map((f) => (
-            <div key={f.title} className="feature-card-3d" style={{
-              background: "#07070f",
-              padding: "40px 32px",
-              borderRight: "1px solid rgba(201,168,76,0.06)",
-            }}>
-              <div style={{
-                width: 48, height: 48,
-                borderRadius: 4,
-                background: "linear-gradient(135deg, rgba(201,168,76,0.15), rgba(201,168,76,0.05))",
-                border: "1px solid rgba(201,168,76,0.2)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                marginBottom: 20,
-                boxShadow: "0 8px 24px rgba(201,168,76,0.1), inset 0 1px 0 rgba(201,168,76,0.1)",
-              }}>
-                {f.icon}
-              </div>
-              <div style={{
-                fontSize: 13, letterSpacing: 4, textTransform: "uppercase",
-                color: "#c9a84c", marginBottom: 10, fontFamily: "'Rajdhani', sans-serif", fontWeight: 600,
-              }}>{f.title}</div>
-              <div style={{
-                fontSize: 13, color: "rgba(201,168,76,0.4)",
-                fontFamily: "'Cormorant Garamond', serif", fontWeight: 300, lineHeight: 1.7, letterSpacing: 0.5,
-              }}>{f.desc}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* ── GENERATOR CARD ── */}
-        <section style={{
-          padding: "80px 24px 80px",
-          display: "flex",
-          justifyContent: "center",
-          position: "relative",
-        }}>
-          {/* Background glow behind card */}
-          <div style={{
-            position: "absolute",
-            top: "50%", left: "50%",
-            transform: "translate(-50%,-50%)",
-            width: 800, height: 400,
-            background: "radial-gradient(ellipse, rgba(201,168,76,0.06) 0%, transparent 70%)",
-            pointerEvents: "none",
-          }} />
-
-          <div style={{
-            width: "100%", maxWidth: 740,
-            background: "linear-gradient(145deg, rgba(15,12,5,0.98) 0%, rgba(10,8,3,0.95) 100%)",
-            border: "1px solid rgba(201,168,76,0.12)",
-            borderRadius: 2,
-            padding: "56px 56px 48px",
-            boxShadow: "0 0 0 1px rgba(201,168,76,0.05), 0 60px 120px rgba(0,0,0,0.8), 0 0 80px rgba(201,168,76,0.04), inset 0 1px 0 rgba(201,168,76,0.08)",
-            position: "relative",
-            overflow: "hidden",
-          }}>
-            {/* Top accent line - animated */}
-            <div style={{
-              position: "absolute", top: 0, left: 0, right: 0, height: 1,
-              background: "linear-gradient(90deg, transparent 0%, #7b4f12 20%, #c9a84c 50%, #f5e19a 60%, #c9a84c 75%, transparent 100%)",
-              backgroundSize: "200% 100%",
-              animation: "shimmer 3s linear infinite",
-            }} />
-            {/* Corner ornaments */}
-            <div style={{ position: "absolute", top: 16, left: 16, width: 16, height: 16, borderTop: "1px solid rgba(201,168,76,0.4)", borderLeft: "1px solid rgba(201,168,76,0.4)" }} />
-            <div style={{ position: "absolute", top: 16, right: 16, width: 16, height: 16, borderTop: "1px solid rgba(201,168,76,0.4)", borderRight: "1px solid rgba(201,168,76,0.4)" }} />
-            <div style={{ position: "absolute", bottom: 16, left: 16, width: 16, height: 16, borderBottom: "1px solid rgba(201,168,76,0.4)", borderLeft: "1px solid rgba(201,168,76,0.4)" }} />
-            <div style={{ position: "absolute", bottom: 16, right: 16, width: 16, height: 16, borderBottom: "1px solid rgba(201,168,76,0.4)", borderRight: "1px solid rgba(201,168,76,0.4)" }} />
-
-            {/* Card inner glow */}
-            <div style={{
-              position: "absolute", top: -40, left: "50%",
-              transform: "translateX(-50%)",
-              width: 280, height: 100,
-              background: "radial-gradient(ellipse, rgba(201,168,76,0.08) 0%, transparent 70%)",
-              pointerEvents: "none",
-            }} />
-
-            <div style={{
-              fontSize: 10, letterSpacing: 6, textTransform: "uppercase",
-              color: "rgba(201,168,76,0.6)", marginBottom: 8,
-              fontFamily: "'Rajdhani', sans-serif", fontWeight: 500,
-              display: "flex", alignItems: "center", gap: 12,
-            }}>
-              <span style={{ width: 24, height: 1, background: "rgba(201,168,76,0.4)" }} />
-              Gift Generator
-            </div>
-
-            <h2 style={{
-              fontFamily: "'Cormorant Garamond', serif",
-              fontSize: 38, letterSpacing: 3, textTransform: "uppercase",
-              color: "#e8d8a8", marginBottom: 40, fontWeight: 600,
-              textShadow: "0 0 40px rgba(201,168,76,0.2)",
-            }}>
-              Describe Your Recipient
-            </h2>
-
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-              <span style={{ fontSize: 10, letterSpacing: 4, textTransform: "uppercase", color: "rgba(201,168,76,0.4)", fontFamily: "'Rajdhani', sans-serif" }}>
-                Your Prompt
-              </span>
-              <span style={{
-                fontSize: 10, letterSpacing: 2,
-                color: prompt.length > 0 ? "rgba(201,168,76,0.6)" : "rgba(201,168,76,0.25)",
-                fontFamily: "'Space Mono', monospace",
-                transition: "color 0.3s",
-              }}>
-                {prompt.length} <span style={{ opacity: 0.5 }}>chars</span>
-              </span>
-            </div>
-
-            <textarea
-              rows={5}
-              className="prompt-textarea"
-              style={{
-                width: "100%",
-                background: "rgba(201,168,76,0.02)",
-                border: "1px solid rgba(201,168,76,0.12)",
-                borderRadius: 2,
-                color: "rgba(230,210,160,0.9)",
-                fontSize: 15,
-                padding: "18px 20px",
-                resize: "vertical",
-                outline: "none",
-                fontFamily: "'Cormorant Garamond', serif",
-                fontWeight: 300,
-                fontStyle: "italic",
-                letterSpacing: 0.5,
-                lineHeight: 1.8,
-                boxSizing: "border-box",
-              }}
-              placeholder="e.g. A 30-year-old woman who loves hiking, coffee, and photography. Budget around 50 USD. Birthday gift."
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-            />
-
-            <button
-              className="generate-btn"
-              style={{
-                width: "100%",
-                marginTop: 24,
-                padding: "18px",
-                background: loading
-                  ? "rgba(201,168,76,0.2)"
-                  : "linear-gradient(135deg, #7b4f12 0%, #c9a84c 50%, #f5e19a 100%)",
-                border: loading ? "1px solid rgba(201,168,76,0.2)" : "none",
-                borderRadius: 2,
-                color: loading ? "rgba(201,168,76,0.5)" : "#1a0f00",
-                fontSize: 12,
-                letterSpacing: 6,
-                textTransform: "uppercase",
-                fontFamily: "'Rajdhani', sans-serif",
-                fontWeight: 700,
-                cursor: loading ? "not-allowed" : "pointer",
-                boxShadow: loading ? "none" : "0 8px 32px rgba(201,168,76,0.3), inset 0 1px 0 rgba(255,255,255,0.2)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 12,
-              }}
-              onClick={handleSubmit}
-              disabled={loading}
-            >
-              {loading ? (
-                <>
-                  Generating
-                  <span>
-                    <span style={{ animation: "dotBlink 1.4s infinite", animationDelay: "0s" }}>.</span>
-                    <span style={{ animation: "dotBlink 1.4s infinite", animationDelay: "0.2s" }}>.</span>
-                    <span style={{ animation: "dotBlink 1.4s infinite", animationDelay: "0.4s" }}>.</span>
-                  </span>
-                </>
-              ) : (
-                <>
-                  <CrystalGem size={16} style={{ filter: "none" }} />
-                  Generate Gift Ideas
-                </>
-              )}
-            </button>
-
-            {result && (
-              <div style={{
-                marginTop: 36,
-                border: "1px solid rgba(201,168,76,0.12)",
-                borderRadius: 2,
-                overflow: "hidden",
-                animation: "fadeUp 0.5s ease",
-              }}>
-                <div style={{
-                  padding: "12px 20px",
-                  background: "rgba(201,168,76,0.05)",
-                  borderBottom: "1px solid rgba(201,168,76,0.1)",
-                  display: "flex", alignItems: "center", gap: 12,
-                }}>
-                  <div style={{
-                    width: 8, height: 8, borderRadius: "50%",
-                    background: "#c9a84c",
-                    boxShadow: "0 0 12px #c9a84c, 0 0 24px rgba(201,168,76,0.5)",
-                    animation: "pulseGlow 2s ease-in-out infinite",
-                  }} />
-                  <span style={{
-                    fontSize: 10, letterSpacing: 4, textTransform: "uppercase",
-                    color: "rgba(201,168,76,0.5)", fontFamily: "'Rajdhani', sans-serif",
-                  }}>AI Response</span>
-                  <div style={{ flex: 1 }} />
-                  <div style={{ display: "flex", gap: 6 }}>
-                    {[0, 1, 2].map(i => (
-                      <div key={i} style={{
-                        width: 6, height: 6, borderRadius: "50%",
-                        background: i === 0 ? "#c9a84c" : "rgba(201,168,76,0.2)",
-                        opacity: 0.7,
-                      }} />
-                    ))}
-                  </div>
-                </div>
-                <div className="result-content" style={{
-                  padding: "28px 24px",
-                  background: "rgba(201,168,76,0.015)",
-                  fontFamily: "'Cormorant Garamond', serif",
-                  fontWeight: 300,
-                  fontSize: 15,
-                  lineHeight: 1.8,
-                  color: "rgba(230,210,160,0.85)",
-                  letterSpacing: 0.3,
-                }}>
-                  <ReactMarkdown components={mdComponents}>{result}</ReactMarkdown>
-                </div>
-              </div>
+        {/* MARQUEE */}
+        <div className="marquee-section">
+          <div className="marquee-track">
+            {[...Array(2)].flatMap((_, ri) =>
+              ["Birthday Gifts","Wedding Ideas","Anniversary Surprises","Corporate Gifting","Holiday Presents","Graduation Gifts","Romantic Gestures","Personalized Picks"].map(t => (
+                <span key={`${t}-${ri}`} className="marquee-item">{t}</span>
+              ))
             )}
           </div>
-        </section>
-
-        {/* ── STATS ── */}
-        <div style={{
-          background: "linear-gradient(90deg, rgba(201,168,76,0.04) 0%, rgba(201,168,76,0.07) 50%, rgba(201,168,76,0.04) 100%)",
-          borderTop: "1px solid rgba(201,168,76,0.1)",
-          borderBottom: "1px solid rgba(201,168,76,0.1)",
-          display: "flex",
-          justifyContent: "space-around",
-          flexWrap: "wrap",
-          gap: 0,
-          padding: "0",
-          position: "relative",
-          overflow: "hidden",
-        }}>
-          {/* shimmer overlay */}
-          <div style={{
-            position: "absolute", inset: 0,
-            background: "linear-gradient(90deg, transparent, rgba(201,168,76,0.03), transparent)",
-            backgroundSize: "200% 100%",
-            animation: "shimmer 4s linear infinite",
-            pointerEvents: "none",
-          }} />
-          {[
-            { num: "10K+", label: "Gifts Generated" },
-            { num: "98%", label: "Satisfaction Rate" },
-            { num: "500+", label: "Occasions Covered" },
-            { num: "< 3s", label: "Average Response" },
-          ].map((s, i) => (
-            <div key={s.label} className="stat-card" style={{
-              textAlign: "center",
-              padding: "40px 48px",
-              borderRight: i < 3 ? "1px solid rgba(201,168,76,0.08)" : "none",
-              flex: "1 1 200px",
-            }}>
-              <div style={{
-                fontFamily: "'Cormorant Garamond', serif",
-                fontSize: 42, fontWeight: 700, letterSpacing: 2,
-                color: "#c9a84c",
-                textShadow: "0 0 30px rgba(201,168,76,0.4), 0 0 60px rgba(201,168,76,0.15)",
-                marginBottom: 4,
-              }}>{s.num}</div>
-              <div style={{
-                fontSize: 10, letterSpacing: 4, textTransform: "uppercase",
-                color: "rgba(201,168,76,0.35)", fontFamily: "'Rajdhani', sans-serif",
-              }}>{s.label}</div>
-            </div>
-          ))}
         </div>
 
-        {/* ── HOW IT WORKS ── */}
-        <section style={{
-          padding: "80px 48px",
-          borderTop: "1px solid rgba(255,255,255,0.03)",
-          maxWidth: 1100,
-          margin: "0 auto",
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 6 }}>
-            <div style={{ width: 32, height: 1, background: "rgba(201,168,76,0.4)" }} />
-            <div style={{ fontSize: 10, letterSpacing: 5, textTransform: "uppercase", color: "#c9a84c", fontFamily: "'Rajdhani', sans-serif" }}>Process</div>
-          </div>
-          <div style={{
-            fontFamily: "'Cormorant Garamond', serif",
-            fontSize: "clamp(28px, 5vw, 52px)",
-            letterSpacing: 4, textTransform: "uppercase",
-            color: "#e8d8a8", fontWeight: 700, marginBottom: 56,
-          }}>How It Works</div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 20 }}>
+        {/* FEATURES */}
+        <section className="features-section">
+          <div className="features-inner">
             {[
-              { n: "01", title: "Describe", desc: "Tell the AI about the recipient — their interests, personality, relationship, and budget." },
-              { n: "02", title: "Generate", desc: "Our language model analyzes context and produces curated, thoughtful gift recommendations." },
-              { n: "03", title: "Explore", desc: "Browse tailored suggestions with reasoning and purchase guidance for each idea." },
-              { n: "04", title: "Delight", desc: "Give a truly memorable gift — chosen with intelligence, not guesswork." },
-            ].map((s) => (
-              <div key={s.n} className="step-card" style={{
-                background: "linear-gradient(145deg, #090910, #060609)",
-                border: "1px solid rgba(201,168,76,0.08)",
-                borderRadius: 2,
-                padding: "36px 28px",
-                boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
-              }}>
-                <div style={{
-                  fontFamily: "'Cormorant Garamond', serif",
-                  fontSize: 64, fontWeight: 700,
-                  color: "rgba(201,168,76,0.08)",
-                  lineHeight: 1, marginBottom: 20,
-                  textShadow: "0 0 40px rgba(201,168,76,0.15)",
-                }}>{s.n}</div>
-                {/* Step indicator line */}
-                <div style={{
-                  width: 24, height: 2,
-                  background: "linear-gradient(90deg, #c9a84c, transparent)",
-                  marginBottom: 16,
-                }} />
-                <div style={{
-                  fontSize: 14, letterSpacing: 4, textTransform: "uppercase",
-                  color: "#d4b868", marginBottom: 12,
-                  fontFamily: "'Rajdhani', sans-serif", fontWeight: 600,
-                }}>{s.title}</div>
-                <div style={{
-                  fontSize: 14, color: "rgba(201,168,76,0.38)",
-                  fontFamily: "'Cormorant Garamond', serif", fontWeight: 300, lineHeight: 1.7,
-                }}>{s.desc}</div>
+              { label: "Intelligence", title: "Context Aware",  desc: "Understands the person, occasion, and budget for precision-grade results every time." },
+              { label: "Speed",        title: "Instant Output", desc: "AI generates tailored, thoughtful ideas in seconds — not hours of browsing." },
+              { label: "Depth",        title: "Deeply Personal",desc: "Beyond generic lists. Specific, memorable, and emotionally resonant gift ideas." },
+              { label: "Versatility",  title: "Any Occasion",  desc: "Birthdays, weddings, holidays, anniversaries, corporate events and beyond." },
+            ].map((f, i) => (
+              <div key={f.title} className="feature-tile">
+                <div className="feature-num">{String(i+1).padStart(2,"0")}</div>
+                <IconCube />
+                <div className="feature-label">{f.label}</div>
+                <div className="feature-title-text">{f.title}</div>
+                <div className="feature-desc-text">{f.desc}</div>
               </div>
             ))}
           </div>
         </section>
 
-        {/* ── TESTIMONIALS ── */}
-        <section style={{
-          padding: "60px 48px 80px",
-          borderTop: "1px solid rgba(255,255,255,0.03)",
-          position: "relative", overflow: "hidden",
-        }}>
-          <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 50% 80% at 50% 50%, rgba(201,168,76,0.03) 0%, transparent 70%)", pointerEvents: "none" }} />
-          <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 6 }}>
-              <div style={{ width: 32, height: 1, background: "rgba(201,168,76,0.4)" }} />
-              <div style={{ fontSize: 10, letterSpacing: 5, textTransform: "uppercase", color: "#c9a84c", fontFamily: "'Rajdhani', sans-serif" }}>What People Say</div>
-            </div>
-            <div style={{
-              fontFamily: "'Cormorant Garamond', serif",
-              fontSize: "clamp(28px, 4vw, 52px)", letterSpacing: 4,
-              textTransform: "uppercase", color: "#e8d8a8", fontWeight: 700, marginBottom: 48,
-            }}>Testimonials</div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 20 }}>
-              {[
-                { text: "I used GiftGenix for my partner's birthday and the ideas were incredibly specific. It felt like the AI actually knew her.", author: "Priya M." },
-                { text: "Saved me hours of searching. The recommendations were thoughtful, budget-aware, and genuinely surprising.", author: "James R." },
-                { text: "Used it for corporate gifting. Clean, professional suggestions that impressed our clients.", author: "Aisha T." },
-              ].map((t, i) => (
-                <div key={t.author} className="testi-card" style={{
-                  background: "#07070e",
-                  border: "1px solid rgba(201,168,76,0.07)",
-                  borderRadius: 2,
-                  padding: "32px 28px",
-                  boxShadow: "0 16px 48px rgba(0,0,0,0.5)",
-                  position: "relative",
-                }}>
-                  {/* Quote mark */}
-                  <div style={{
-                    fontFamily: "'Cormorant Garamond', serif",
-                    fontSize: 80, lineHeight: 0.8,
-                    color: "rgba(201,168,76,0.06)",
-                    position: "absolute", top: 16, right: 20,
-                    userSelect: "none",
-                  }}>"</div>
-                  <div style={{
-                    fontSize: 15, color: "rgba(201,168,76,0.5)",
-                    fontFamily: "'Cormorant Garamond', serif",
-                    fontWeight: 300, lineHeight: 1.8, marginBottom: 24, fontStyle: "italic",
-                    position: "relative", zIndex: 1,
-                  }}>"{t.text}"</div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <div style={{
-                      width: 32, height: 32, borderRadius: "50%",
-                      background: "linear-gradient(135deg, rgba(201,168,76,0.2), rgba(201,168,76,0.05))",
-                      border: "1px solid rgba(201,168,76,0.2)",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: 12, color: "#c9a84c", fontFamily: "'Cormorant Garamond', serif",
-                    }}>
-                      {t.author[0]}
-                    </div>
-                    <div style={{
-                      fontSize: 11, letterSpacing: 4, textTransform: "uppercase",
-                      color: "#c9a84c", fontFamily: "'Rajdhani', sans-serif", fontWeight: 600,
-                    }}>{t.author}</div>
+        {/* GENERATOR */}
+        <section className="generator-section">
+          <div className="section-header">
+            <div className="section-eyebrow">Gift Generator</div>
+            <h2 className="section-title">Describe Your<br /><em>Recipient</em></h2>
+          </div>
+          <div className="generator-card-wrap" onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave}>
+            <div className="generator-card" ref={cardRef}>
+              <div className="card-top-line" />
+              <div className="card-inner-glow" />
+              <div className="card-watermark">GG</div>
+              <div className="card-label">Gift Generator</div>
+              <div className="card-heading">Craft Your Request</div>
+
+              <div className="prompt-tabs">
+                {tabs.map((t, i) => (
+                  <button key={t} className={`prompt-tab${activeTab===i?" active":""}`} onClick={() => setActiveTab(i)}>{t}</button>
+                ))}
+              </div>
+
+              <div className="input-meta">
+                <span className="input-label">Your Prompt</span>
+                <span className="char-count">{prompt.length} chars</span>
+              </div>
+              <div className="textarea-wrap">
+                <textarea
+                  className="prompt-textarea" rows={5}
+                  placeholder="e.g. A 30-year-old woman who loves hiking, coffee, and photography. Budget around $50. Birthday gift."
+                  value={prompt} onChange={e => setPrompt(e.target.value)}
+                />
+                <div className="textarea-scanner" />
+              </div>
+
+              <div className="quick-chips">
+                {chips.map(c => <button key={c} className="quick-chip" onClick={() => appendChip(c)}>{c}</button>)}
+              </div>
+
+              <button className="submit-btn" onClick={handleSubmit} disabled={loading}>
+                <span>{loading ? "Generating Ideas..." : "Generate Gift Ideas"}</span>
+              </button>
+
+              {loading && <div className="loading-bar"><div className="loading-fill" /></div>}
+
+              {result && (
+                <div className="result-outer">
+                  <div className="result-header">
+                    <div className="result-dot" />
+                    <span className="result-label">AI Response</span>
                   </div>
+                  <div className="result-body md-body">
+                    <ReactMarkdown components={mdComponents}>{result}</ReactMarkdown>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+
+        {/* STATS */}
+        <div className="stats-section">
+          <div className="stats-inner">
+            {[
+              { num: "10", suffix: "K+", label: "Gifts Generated" },
+              { num: "98", suffix: "%",  label: "Satisfaction Rate" },
+              { num: "500",suffix: "+",  label: "Occasions Covered" },
+              { num: "< 3",suffix: "s",  label: "Average Response" },
+            ].map(s => (
+              <div key={s.label} className="stat-item">
+                <div className="stat-num">{s.num}<span>{s.suffix}</span></div>
+                <div className="stat-label">{s.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* HOW IT WORKS */}
+        <section className="how-section">
+          <div style={{ textAlign: "center" }}>
+            <div className="section-eyebrow">Process</div>
+            <h2 className="section-title">How It <em>Works</em></h2>
+          </div>
+          <div className="steps-grid">
+            {[
+              { n: "01", name: "Describe",  text: "Tell the AI about the recipient — their interests, personality, relationship, and budget." },
+              { n: "02", name: "Generate",  text: "Our language model analyzes context and produces curated, thoughtful gift recommendations." },
+              { n: "03", name: "Explore",   text: "Browse tailored suggestions with reasoning and purchase guidance for each idea." },
+              { n: "04", name: "Delight",   text: "Give a truly memorable gift — chosen with intelligence, not guesswork." },
+            ].map(s => (
+              <div key={s.n} className="step-cell">
+                <div className="step-index">{s.n}</div>
+                <div className="step-name">{s.name}</div>
+                <div className="step-text">{s.text}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* TESTIMONIALS */}
+        <section className="testi-section">
+          <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+            <div className="section-eyebrow">What People Say</div>
+            <h2 className="section-title">Testimonials</h2>
+          </div>
+          <div className="testi-grid">
+            {[
+              { text: "I used GiftGenix for my partner's birthday and the ideas were incredibly specific. It felt like the AI actually knew her.", author: "Priya M.", role: "Product Designer" },
+              { text: "Saved me hours of searching. The recommendations were thoughtful, budget-aware, and genuinely surprising.", author: "James R.", role: "Startup Founder" },
+              { text: "Used it for corporate gifting. Clean, professional suggestions that impressed our clients.", author: "Aisha T.", role: "Marketing Director" },
+            ].map(t => (
+              <div key={t.author} className="testi-card">
+                <div className="testi-stars">{[...Array(5)].map((_,i) => <div key={i} className="star" />)}</div>
+                <div className="testi-quote">{t.text}</div>
+                <div className="testi-author">{t.author}</div>
+                <div className="testi-role">{t.role}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* FOOTER */}
+        <footer className="site-footer">
+          <div className="footer-inner">
+            <div className="footer-top">
+              <div>
+                <div className="footer-brand">Gift<span>Genix</span></div>
+                <div className="footer-tagline">AI-powered gift recommendations engineered for precision, thoughtfulness, and delight.</div>
+              </div>
+              {[
+                { title: "Product",   links: ["Generator","Features","Pricing","Changelog"] },
+                { title: "Resources", links: ["Documentation","API Reference","Examples","Support"] },
+                { title: "Company",   links: ["About","Blog","Privacy","Terms"] },
+              ].map(col => (
+                <div key={col.title}>
+                  <div className="footer-col-title">{col.title}</div>
+                  <ul className="footer-links">{col.links.map(l => <li key={l}>{l}</li>)}</ul>
                 </div>
               ))}
             </div>
-          </div>
-        </section>
-
-        {/* ── FOOTER ── */}
-        <footer style={{
-          background: "#020208",
-          borderTop: "1px solid rgba(201,168,76,0.08)",
-          padding: "64px 48px 28px",
-          position: "relative",
-          overflow: "hidden",
-        }}>
-          {/* Footer top accent */}
-          <div style={{
-            position: "absolute", top: 0, left: 0, right: 0, height: 1,
-            background: "linear-gradient(90deg, transparent, rgba(201,168,76,0.4), transparent)",
-          }} />
-
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "2fr 1fr 1fr 1fr",
-            gap: 48,
-            maxWidth: 1100,
-            margin: "0 auto 48px",
-          }}>
-            <div>
-              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-                <CrystalGem size={32} />
-                <span style={{
-                  fontFamily: "'Cormorant Garamond', serif",
-                  fontSize: 24, letterSpacing: 6, fontWeight: 700,
-                  background: "linear-gradient(135deg, #f5e19a, #c9a84c)",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                  backgroundClip: "text",
-                  textShadow: "none",
-                }}>GiftGenix</span>
-              </div>
-              <div style={{
-                fontSize: 14, color: "rgba(201,168,76,0.28)",
-                fontFamily: "'Cormorant Garamond', serif", fontWeight: 300, lineHeight: 1.7, fontStyle: "italic",
-              }}>
-                AI-powered gift recommendations engineered for precision, thoughtfulness, and delight.
-              </div>
-              {/* Divider */}
-              <div style={{ width: 60, height: 1, background: "linear-gradient(90deg, rgba(201,168,76,0.4), transparent)", marginTop: 24 }} />
-            </div>
-
-            {[
-              { title: "Product", links: ["Generator", "Features", "Pricing", "Changelog"] },
-              { title: "Resources", links: ["Documentation", "API Reference", "Examples", "Support"] },
-              { title: "Company", links: ["About", "Blog", "Privacy", "Terms"] },
-            ].map((col) => (
-              <div key={col.title}>
-                <div style={{
-                  fontSize: 10, letterSpacing: 4, textTransform: "uppercase",
-                  color: "rgba(201,168,76,0.5)", marginBottom: 20,
-                  fontFamily: "'Rajdhani', sans-serif", fontWeight: 600,
-                }}>{col.title}</div>
-                <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-                  {col.links.map((l) => (
-                    <li key={l} style={{
-                      fontSize: 13, color: "rgba(201,168,76,0.25)",
-                      fontFamily: "'Cormorant Garamond', serif", fontWeight: 300,
-                      marginBottom: 12, cursor: "pointer",
-                      transition: "color 0.2s",
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.color = "rgba(201,168,76,0.6)"}
-                    onMouseLeave={e => e.currentTarget.style.color = "rgba(201,168,76,0.25)"}
-                    >{l}</li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-
-          <div style={{
-            borderTop: "1px solid rgba(201,168,76,0.06)",
-            paddingTop: 24,
-            maxWidth: 1100,
-            margin: "0 auto",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            flexWrap: "wrap",
-            gap: 12,
-          }}>
-            <span style={{ fontSize: 11, color: "rgba(201,168,76,0.2)", letterSpacing: 3, fontFamily: "'Rajdhani', sans-serif" }}>
-              2024 GIFTGENIX — ALL RIGHTS RESERVED
-            </span>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#c9a84c", boxShadow: "0 0 8px rgba(201,168,76,0.8)", animation: "pulseGlow 2s infinite" }} />
-              <span style={{ fontSize: 11, color: "rgba(201,168,76,0.2)", letterSpacing: 3, fontFamily: "'Rajdhani', sans-serif" }}>BUILT WITH AI</span>
+            <div className="footer-bottom">
+              <span className="footer-copy">2024 GiftGenix — All rights reserved</span>
+              <span className="footer-copy">Built with AI</span>
             </div>
           </div>
         </footer>
@@ -1126,5 +750,3 @@ function App() {
     </>
   );
 }
-
-export default App;
