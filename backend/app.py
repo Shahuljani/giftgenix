@@ -8,8 +8,7 @@ from google.genai import types
 load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 
 app = Flask(__name__)
-CORS(app)
-
+CORS(app, resources={r"/*": {"origins": "https://giftgenix.netlify.app"}})
 # ---------------------------------
 # Load All 5 API Keys
 # ---------------------------------
